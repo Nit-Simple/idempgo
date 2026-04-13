@@ -35,7 +35,7 @@ func (m *Middleware) AcquireOrGet(ctx context.Context, inflight time.Duration, k
 	if acquired {
 		return AcquireOutcome{Result: Acquired}, nil
 	}
-	switch record.status {
+	switch record.Status {
 	case STATUS_COMPLETED:
 		return AcquireOutcome{Result: Replayed, Record: record}, nil
 	case STATUS_IN_FLIGHT:
@@ -64,7 +64,7 @@ func (m *Middleware) blockUntillResolved(ctx context.Context, key string, inflgh
 				return outcome, nil // Acquired or Replayed — done
 			}
 			// another goroutine beat us, keep polling
-		} else if record.status == STATUS_COMPLETED {
+		} else if record.Status == STATUS_COMPLETED {
 			return AcquireOutcome{Result: Replayed, Record: record}, nil
 		}
 		select {
@@ -82,7 +82,7 @@ func (m *Middleware) resolveKey(ctx context.Context, r *http.Request) (resolvedK
 		return ResolvedKey{}, err
 	}
 	if key != "" {
-		return ResolvedKey{key: key, derived: false}, nil
+		return ResolvedKey{Key: key, Derived: false}, nil
 	}
 	if !m.cfg.AllowDerivedKeys {
 		return ResolvedKey{}, ErrMissingKeys
@@ -97,5 +97,5 @@ func (m *Middleware) resolveKey(ctx context.Context, r *http.Request) (resolvedK
 	if derivedkey == "" {
 		return ResolvedKey{}, ErrMissingKeys
 	}
-	return ResolvedKey{key: derivedkey, derived: true}, nil
+	return ResolvedKey{Key: derivedkey, Derived: true}, nil
 }

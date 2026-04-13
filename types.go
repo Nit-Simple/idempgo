@@ -18,22 +18,22 @@ const (
 )
 
 type IdempotencyRecord struct {
-	key         string
-	fingerPrint string
-	status      RecordStatus
+	Key         string
+	FingerPrint string
+	Status      RecordStatus
 	Response    *StoredResponse
 	ExpiresAt   time.Time
 }
 
 type StoredResponse struct {
-	statusCode int
-	headers    map[string]string
-	body       []byte
+	StatusCode int
+	Headers    map[string]string
+	Body       []byte
 }
 
 type ResolvedKey struct {
-	key     string
-	derived bool
+	Key     string
+	Derived bool
 }
 
 type AcquireOutcome struct {

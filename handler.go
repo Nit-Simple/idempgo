@@ -18,7 +18,7 @@ func (m *Middleware) Handle(next http.Handler) http.Handler {
 				http.Error(w, "internal error", http.StatusInternalServerError)
 				return
 			}
-			outcome, err := m.AcquireOrGet(r.Context(), m.cfg.InFlightTTL, rk.key, fp)
+			outcome, err := m.AcquireOrGet(r.Context(), m.cfg.InFlightTTL, rk.Key, fp)
 			if err != nil {
 				http.Error(w, "internal error", http.StatusInternalServerError)
 				return
@@ -28,14 +28,14 @@ func (m *Middleware) Handle(next http.Handler) http.Handler {
 				rec := newResponseRecorder(w)
 				next.ServeHTTP(rec, r)
 				if rec.statusCode >= 500 {
-					m.store.Abandon(r.Context(), rk.key)
+					m.store.Abandon(r.Context(), rk.Key)
 					return
 				}
 				ttl := m.cfg.ExplicitKeyTTL
 				rec.flush()
-				m.store.Complete(r.Context(), rk.key, rec.storedResponse(), ttl)
+				m.store.Complete(r.Context(), rk.Key, rec.storedResponse(), ttl)
 			case Replayed:
-				if fp != outcome.Record.fingerPrint {
+				if fp != outcome.Record.FingerPrint {
 					w.WriteHeader(http.StatusUnprocessableEntity)
 					w.Write([]byte("idempotency key reused with different request"))
 					return
@@ -48,7 +48,7 @@ func (m *Middleware) Handle(next http.Handler) http.Handler {
 					w.Write([]byte("the key is already in use"))
 					return
 				case ConflictBlock:
-					outcome, err := m.blockUntillResolved(r.Context(), rk.key, m.cfg.InFlightTTL, fp)
+					outcome, err := m.blockUntillResolved(r.Context(), rk.Key, m.cfg.InFlightTTL, fp)
 					if err != nil {
 						http.Error(w, "internal error", http.StatusInternalServerError)
 						return
@@ -57,16 +57,16 @@ func (m *Middleware) Handle(next http.Handler) http.Handler {
 						rec := newResponseRecorder(w)
 						next.ServeHTTP(rec, r)
 						if rec.statusCode >= 500 {
-							m.store.Abandon(r.Context(), rk.key)
+							m.store.Abandon(r.Context(), rk.Key)
 							return
 						}
 						ttl := m.cfg.ExplicitKeyTTL
 						rec.flush()
-						m.store.Complete(r.Context(), rk.key, rec.storedResponse(), ttl)
+						m.store.Complete(r.Context(), rk.Key, rec.storedResponse(), ttl)
 						return
 					}
 					if outcome.Result == Replayed {
-						if fp != outcome.Record.fingerPrint {
+						if fp != outcome.Record.FingerPrint {
 							w.WriteHeader(http.StatusUnprocessableEntity)
 							w.Write([]byte("idempotency key reused with different request"))
 							return
@@ -127,16 +127,16 @@ func (r *responseRecorder) storedResponse() *StoredResponse {
 		headers[k] = v[0] // store first value per header
 	}
 	return &StoredResponse{
-		statusCode: r.statusCode,
-		body:       r.buf.Bytes(),
-		headers:    headers,
+		StatusCode: r.statusCode,
+		Body:       r.buf.Bytes(),
+		Headers:    headers,
 	}
 }
 func writeReplay(w http.ResponseWriter, record *IdempotencyRecord) {
-	for k, v := range record.Response.headers {
+	for k, v := range record.Response.Headers {
 		w.Header().Set(k, v)
 	}
 	w.Header().Set("Idempotent-Replayed", "true")
-	w.WriteHeader(record.Response.statusCode)
-	w.Write(record.Response.body)
+	w.WriteHeader(record.Response.StatusCode)
+	w.Write(record.Response.Body)
 }
